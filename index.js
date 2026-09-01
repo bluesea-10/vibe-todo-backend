@@ -23,8 +23,8 @@ function readMongoUri() {
 const mongoUri = readMongoUri();
 
 if (!mongoUri) {
-  throw new Error(
-    "MONGO_URI 환경변수가 없습니다. todo-backend/.env 파일을 확인하세요.",
+  console.error(
+    "MONGO_URI 환경변수가 없습니다. Cloudtype 설정에 MONGO_URI를 추가하세요.",
   );
 }
 
@@ -93,34 +93,45 @@ app.use((req, res, next) => {
 });
 app.use(express.json());
 
+app.get("/", (_req, res) => {
+  return res.json({
+    ok: true,
+    message: "Todo API가 실행 중입니다.",
+    todos: "/todos",
+    health: "/health",
+  });
+});
+
 app.get("/health", (_req, res) => {
   const dbState = mongoose.connection.readyState;
   const dbStatus =
     dbState === 1 ? "connected" : dbState === 2 ? "connecting" : "disconnected";
 
-  return res.status(dbState === 1 ? 200 : 503).json({
-    status: dbState === 1 ? "ok" : "error",
+  return res.json({
+    status: "ok",
     db: dbStatus,
   });
 });
 
 app.use("/todos", requireDb, todoRouter);
 
-mongoose
-  .connect(mongoUri, {
-    serverSelectionTimeoutMS: 10000,
-  })
-  .then(async () => {
-    const mongoHost = new URL(mongoUri).host;
-    const dbName = mongoose.connection.name;
-    console.log(`MongoDB 연결 성공 (${mongoHost}, database: ${dbName})`);
-    await Todo.createCollection().catch((error) => {
-      if (error.code !== 48) throw error;
+if (mongoUri) {
+  mongoose
+    .connect(mongoUri, {
+      serverSelectionTimeoutMS: 10000,
+    })
+    .then(async () => {
+      const mongoHost = new URL(mongoUri).host;
+      const dbName = mongoose.connection.name;
+      console.log(`MongoDB 연결 성공 (${mongoHost}, database: ${dbName})`);
+      await Todo.createCollection().catch((error) => {
+        if (error.code !== 48) throw error;
+      });
+    })
+    .catch((error) => {
+      console.error("MongoDB 연결 실패:", getMongoErrorMessage(error));
     });
-  })
-  .catch((error) => {
-    console.error("MongoDB 연결 실패:", getMongoErrorMessage(error));
-  });
+}
 
 app.listen(port, "0.0.0.0", () => {
   console.log(`Server running on port ${port}`);
