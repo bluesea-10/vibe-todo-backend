@@ -13,7 +13,7 @@ dotenv.config({
 
 const app = express();
 app.disable("etag");
-const port = 5000;
+const port = process.env.PORT || 5000;
 
 function readMongoUri() {
   const raw = process.env.MONGO_URI ?? process.env.MONGODB_URI ?? "";
@@ -117,12 +117,11 @@ mongoose
     await Todo.createCollection().catch((error) => {
       if (error.code !== 48) throw error;
     });
-    app.listen(port, () => {
-      console.log(`Server running at http://localhost:${port}`);
-      console.log("프론트엔드는 todo-react 폴더에서 npm run dev 로 실행하세요.");
-    });
   })
   .catch((error) => {
     console.error("MongoDB 연결 실패:", getMongoErrorMessage(error));
-    process.exit(1);
   });
+
+app.listen(port, "0.0.0.0", () => {
+  console.log(`Server running on port ${port}`);
+});
